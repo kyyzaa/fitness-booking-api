@@ -1,12 +1,12 @@
 # Multi-stage build for smaller image size
-FROM python:3.11-slim as builder
+FROM python:3.11-slim AS builder
 
 # Set working directory
 WORKDIR /app
 
-# Install dependencies
+# Install dependencies with retry and timeout settings
 COPY requirements.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+RUN pip install --default-timeout=100 --retries=5 --no-cache-dir --user -r requirements.txt
 
 # Final stage
 FROM python:3.11-slim
