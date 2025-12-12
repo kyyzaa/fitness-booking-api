@@ -2,15 +2,17 @@
 API Routes untuk Booking Context
 RESTful endpoints untuk mengelola BookingSession
 """
-from typing import List
-from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel
-from datetime import date, time
 
-from app.domain.entities import BookingSession, BookingStatus, User
-from app.domain.value_objects import TimeSlot, SessionDuration
+from datetime import date, time
+from typing import List
+
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
+
 from app.application.services import BookingService
-from app.auth.dependencies import get_current_user, get_current_active_user
+from app.auth.dependencies import get_current_active_user, get_current_user
+from app.domain.entities import BookingSession, BookingStatus, User
+from app.domain.value_objects import SessionDuration, TimeSlot
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
@@ -20,13 +22,13 @@ class TimeSlotDTO(BaseModel):
     date: date
     start_time: time
     end_time: time
-    
+
     class Config:
         json_schema_extra = {
             "example": {
                 "date": "2025-11-20",
                 "start_time": "09:00:00",
-                "end_time": "10:00:00"
+                "end_time": "10:00:00",
             }
         }
 
@@ -36,7 +38,7 @@ class CreateBookingRequest(BaseModel):
     trainer_id: str
     time_slot: TimeSlotDTO
     duration_minutes: int
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -45,31 +47,29 @@ class CreateBookingRequest(BaseModel):
                 "time_slot": {
                     "date": "2025-11-20",
                     "start_time": "09:00:00",
-                    "end_time": "10:00:00"
+                    "end_time": "10:00:00",
                 },
-                "duration_minutes": 60
+                "duration_minutes": 60,
             }
         }
 
 
 class ConfirmBookingRequest(BaseModel):
     trainer_id: str
-    
+
     class Config:
-        json_schema_extra = {
-            "example": {"trainer_id": "TR001"}
-        }
+        json_schema_extra = {"example": {"trainer_id": "TR001"}}
 
 
 class RejectBookingRequest(BaseModel):
     trainer_id: str
     reason: str
-    
+
     class Config:
         json_schema_extra = {
             "example": {
                 "trainer_id": "TR001",
-                "reason": "Jadwal bentrok dengan sesi lain"
+                "reason": "Jadwal bentrok dengan sesi lain",
             }
         }
 
@@ -77,13 +77,10 @@ class RejectBookingRequest(BaseModel):
 class CancelBookingRequest(BaseModel):
     user_id: str
     reason: str
-    
+
     class Config:
         json_schema_extra = {
-            "example": {
-                "user_id": "USR001",
-                "reason": "Client berhalangan hadir"
-            }
+            "example": {"user_id": "USR001", "reason": "Client berhalangan hadir"}
         }
 
 
@@ -97,7 +94,7 @@ class BookingResponse(BaseModel):
     booking_date: str
     confirmed_date: str | None
     cancellation_reason: str | None
-    
+
     @classmethod
     def from_entity(cls, booking: BookingSession):
         return cls(
@@ -107,19 +104,22 @@ class BookingResponse(BaseModel):
             time_slot=TimeSlotDTO(
                 date=booking.time_slot.date,
                 start_time=booking.time_slot.start_time,
-                end_time=booking.time_slot.end_time
+                end_time=booking.time_slot.end_time,
             ),
             status=booking.status,
             duration_minutes=booking.duration.minutes,
             booking_date=booking.booking_date.isoformat(),
-            confirmed_date=booking.confirmed_date.isoformat() if booking.confirmed_date else None,
-            cancellation_reason=booking.cancellation_reason
+            confirmed_date=(
+                booking.confirmed_date.isoformat() if booking.confirmed_date else None
+            ),
+            cancellation_reason=booking.cancellation_reason,
         )
 
 
 # Dependency injection untuk service
 def get_booking_service() -> BookingService:
     from app.main import booking_service
+
     return booking_service
 
 
@@ -127,13 +127,13 @@ def get_booking_service() -> BookingService:
 def create_booking(
     request: CreateBookingRequest,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Membuat booking session baru
-    
+
     **Memerlukan autentikasi (JWT token)**
-    
+
     - **client_id**: ID client yang melakukan booking
     - **trainer_id**: ID trainer yang akan melatih
     - **time_slot**: Slot waktu untuk sesi latihan
@@ -143,15 +143,15 @@ def create_booking(
         time_slot = TimeSlot(
             date=request.time_slot.date,
             start_time=request.time_slot.start_time,
-            end_time=request.time_slot.end_time
+            end_time=request.time_slot.end_time,
         )
         duration = SessionDuration(minutes=request.duration_minutes)
-        
+
         booking = service.create_booking(
             client_id=request.client_id,
             trainer_id=request.trainer_id,
             time_slot=time_slot,
-            duration=duration
+            duration=duration,
         )
         return BookingResponse.from_entity(booking)
     except ValueError as e:
@@ -161,11 +161,11 @@ def create_booking(
 @router.get("/", response_model=List[BookingResponse])
 def get_all_bookings(
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil semua booking sessions
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     bookings = service.get_all_bookings()
@@ -176,16 +176,18 @@ def get_all_bookings(
 def get_booking(
     booking_id: str,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil detail booking berdasarkan ID
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     booking = service.get_booking(booking_id)
     if not booking:
-        raise HTTPException(status_code=404, detail=f"Booking {booking_id} tidak ditemukan")
+        raise HTTPException(
+            status_code=404, detail=f"Booking {booking_id} tidak ditemukan"
+        )
     return BookingResponse.from_entity(booking)
 
 
@@ -194,11 +196,11 @@ def confirm_booking(
     booking_id: str,
     request: ConfirmBookingRequest,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Konfirmasi booking oleh trainer
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -213,11 +215,11 @@ def reject_booking(
     booking_id: str,
     request: RejectBookingRequest,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Tolak booking oleh trainer
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -232,11 +234,11 @@ def cancel_booking(
     booking_id: str,
     request: CancelBookingRequest,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Batalkan booking oleh client atau trainer
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -250,11 +252,11 @@ def cancel_booking(
 def complete_booking(
     booking_id: str,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Tandai booking sebagai selesai (completed)
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -268,11 +270,11 @@ def complete_booking(
 def get_bookings_by_client(
     client_id: str,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil semua booking milik client tertentu
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     bookings = service.get_bookings_by_client(client_id)
@@ -283,11 +285,11 @@ def get_bookings_by_client(
 def get_bookings_by_trainer(
     trainer_id: str,
     service: BookingService = Depends(get_booking_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil semua booking untuk trainer tertentu
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     bookings = service.get_bookings_by_trainer(trainer_id)

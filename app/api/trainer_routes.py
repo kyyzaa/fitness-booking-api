@@ -1,13 +1,15 @@
 """
 API Routes untuk Trainer Management
 """
+
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.domain.entities import Trainer, User
 from app.application.services import TrainerService
 from app.auth.dependencies import get_current_active_user
+from app.domain.entities import Trainer, User
 
 router = APIRouter(prefix="/trainers", tags=["Trainers"])
 
@@ -20,7 +22,7 @@ class CreateTrainerRequest(BaseModel):
     specialty: Optional[str] = None
     certification: Optional[str] = None
     experience: Optional[int] = None
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -29,7 +31,7 @@ class CreateTrainerRequest(BaseModel):
                 "phone": "+6281234567891",
                 "specialty": "Strength training, Weight loss",
                 "certification": "NASM-CPT, ACE",
-                "experience": 5
+                "experience": 5,
             }
         }
 
@@ -43,7 +45,7 @@ class TrainerResponse(BaseModel):
     specialty: Optional[str]
     certification: Optional[str]
     experience: Optional[int]
-    
+
     @classmethod
     def from_entity(cls, trainer: Trainer):
         return cls(
@@ -54,13 +56,14 @@ class TrainerResponse(BaseModel):
             phone=trainer.phone,
             specialty=trainer.specialty,
             certification=trainer.certification,
-            experience=trainer.experience
+            experience=trainer.experience,
         )
 
 
 # Dependency injection
 def get_trainer_service() -> TrainerService:
     from app.main import trainer_service
+
     return trainer_service
 
 
@@ -68,11 +71,11 @@ def get_trainer_service() -> TrainerService:
 def create_trainer(
     request: CreateTrainerRequest,
     service: TrainerService = Depends(get_trainer_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Membuat trainer baru
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -82,7 +85,7 @@ def create_trainer(
             phone=request.phone,
             specialty=request.specialty,
             certification=request.certification,
-            experience=request.experience
+            experience=request.experience,
         )
         return TrainerResponse.from_entity(trainer)
     except ValueError as e:
@@ -92,11 +95,11 @@ def create_trainer(
 @router.get("/", response_model=List[TrainerResponse])
 def get_all_trainers(
     service: TrainerService = Depends(get_trainer_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil semua trainers
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     trainers = service.get_all_trainers()
@@ -107,14 +110,16 @@ def get_all_trainers(
 def get_trainer(
     trainer_id: str,
     service: TrainerService = Depends(get_trainer_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil detail trainer berdasarkan ID
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     trainer = service.get_trainer(trainer_id)
     if not trainer:
-        raise HTTPException(status_code=404, detail=f"Trainer {trainer_id} tidak ditemukan")
+        raise HTTPException(
+            status_code=404, detail=f"Trainer {trainer_id} tidak ditemukan"
+        )
     return TrainerResponse.from_entity(trainer)

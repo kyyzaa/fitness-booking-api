@@ -1,13 +1,15 @@
 """
 API Routes untuk Client Management
 """
+
 from typing import List, Optional
-from fastapi import APIRouter, HTTPException, Depends
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from app.domain.entities import Client, User
 from app.application.services import ClientService
 from app.auth.dependencies import get_current_active_user
+from app.domain.entities import Client, User
 
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
@@ -18,14 +20,14 @@ class CreateClientRequest(BaseModel):
     email: str
     phone: str
     fitness_goals: Optional[str] = None
-    
+
     class Config:
         json_schema_extra = {
             "example": {
                 "name": "John Doe",
                 "email": "john@example.com",
                 "phone": "+6281234567890",
-                "fitness_goals": "Weight loss and muscle building"
+                "fitness_goals": "Weight loss and muscle building",
             }
         }
 
@@ -37,7 +39,7 @@ class ClientResponse(BaseModel):
     email: str
     phone: str
     fitness_goals: Optional[str]
-    
+
     @classmethod
     def from_entity(cls, client: Client):
         return cls(
@@ -46,13 +48,14 @@ class ClientResponse(BaseModel):
             name=client.name,
             email=client.email,
             phone=client.phone,
-            fitness_goals=client.fitness_goals
+            fitness_goals=client.fitness_goals,
         )
 
 
 # Dependency injection
 def get_client_service() -> ClientService:
     from app.main import client_service
+
     return client_service
 
 
@@ -60,11 +63,11 @@ def get_client_service() -> ClientService:
 def create_client(
     request: CreateClientRequest,
     service: ClientService = Depends(get_client_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Membuat client baru
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     try:
@@ -72,7 +75,7 @@ def create_client(
             name=request.name,
             email=request.email,
             phone=request.phone,
-            fitness_goals=request.fitness_goals
+            fitness_goals=request.fitness_goals,
         )
         return ClientResponse.from_entity(client)
     except ValueError as e:
@@ -82,11 +85,11 @@ def create_client(
 @router.get("/", response_model=List[ClientResponse])
 def get_all_clients(
     service: ClientService = Depends(get_client_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil semua clients
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     clients = service.get_all_clients()
@@ -97,14 +100,16 @@ def get_all_clients(
 def get_client(
     client_id: str,
     service: ClientService = Depends(get_client_service),
-    current_user: User = Depends(get_current_active_user)
+    current_user: User = Depends(get_current_active_user),
 ):
     """
     Mengambil detail client berdasarkan ID
-    
+
     **Memerlukan autentikasi (JWT token)**
     """
     client = service.get_client(client_id)
     if not client:
-        raise HTTPException(status_code=404, detail=f"Client {client_id} tidak ditemukan")
+        raise HTTPException(
+            status_code=404, detail=f"Client {client_id} tidak ditemukan"
+        )
     return ClientResponse.from_entity(client)

@@ -2,11 +2,14 @@
 Entities untuk Booking Context
 Sesuai dengan desain DDD dari dokumen
 """
+
 from datetime import datetime
-from typing import Optional, List
 from enum import Enum
-from pydantic import BaseModel, Field, EmailStr
-from .value_objects import TimeSlot, SessionDuration
+from typing import List, Optional
+
+from pydantic import BaseModel, EmailStr, Field
+
+from .value_objects import SessionDuration, TimeSlot
 
 
 class BookingStatus(str, Enum):
@@ -17,6 +20,7 @@ class BookingStatus(str, Enum):
     CANCELLED: Dibatalkan
     COMPLETED: Sesi selesai
     """
+
     PENDING = "PENDING"
     CONFIRMED = "CONFIRMED"
     CANCELLED = "CANCELLED"
@@ -30,6 +34,7 @@ class UserRole(str, Enum):
     TRAINER: Pelatih yang menyediakan layanan
     ADMIN: Administrator sistem
     """
+
     CLIENT = "CLIENT"
     TRAINER = "TRAINER"
     ADMIN = "ADMIN"
@@ -40,13 +45,14 @@ class User(BaseModel):
     Entity: Pengguna sistem dengan autentikasi
     Atribut: user_id, email, hashed_password, role, is_active, created_at
     """
+
     user_id: str
     email: EmailStr
     hashed_password: str
     role: UserRole
     is_active: bool = True
     created_at: datetime = Field(default_factory=datetime.now)
-    
+
     class Config:
         json_schema_extra = {
             "example": {
@@ -55,7 +61,7 @@ class User(BaseModel):
                 "hashed_password": "$2b$12$...",
                 "role": "CLIENT",
                 "is_active": True,
-                "created_at": "2025-12-01T10:00:00"
+                "created_at": "2025-12-01T10:00:00",
             }
         }
 
@@ -65,6 +71,7 @@ class Client(BaseModel):
     Entity: Menyimpan data pengguna yang melakukan pemesanan sesi latihan
     Atribut: clientId, userId, name, email, phone, fitnessGoals
     """
+
     client_id: str
     user_id: str
     name: str
@@ -79,7 +86,7 @@ class Client(BaseModel):
             "name": self.name,
             "email": self.email,
             "phone": self.phone,
-            "fitness_goals": self.fitness_goals
+            "fitness_goals": self.fitness_goals,
         }
 
     class Config:
@@ -90,7 +97,7 @@ class Client(BaseModel):
                 "name": "John Doe",
                 "email": "john@example.com",
                 "phone": "+6281234567890",
-                "fitness_goals": "Weight loss and muscle building"
+                "fitness_goals": "Weight loss and muscle building",
             }
         }
 
@@ -100,6 +107,7 @@ class Trainer(BaseModel):
     Entity: Menyimpan data pelatih yang menyediakan layanan kebugaran
     Atribut: trainerId, userId, name, email, phone, specialty, certification, experience
     """
+
     trainer_id: str
     user_id: str
     name: str
@@ -118,7 +126,7 @@ class Trainer(BaseModel):
             "phone": self.phone,
             "specialty": self.specialty,
             "certification": self.certification,
-            "experience": self.experience
+            "experience": self.experience,
         }
 
     class Config:
@@ -131,7 +139,7 @@ class Trainer(BaseModel):
                 "phone": "+6281234567891",
                 "specialty": "Strength training, Weight loss",
                 "certification": "NASM-CPT, ACE",
-                "experience": 5
+                "experience": 5,
             }
         }
 
@@ -140,10 +148,11 @@ class BookingSession(BaseModel):
     """
     Aggregate Root: Entitas utama yang mengatur keseluruhan siklus hidup sesi latihan
     Mengelola hubungan antara Client, Trainer, TimeSlot dan SessionDuration
-    
+
     Atribut: bookingId, clientId, trainerId, timeSlot, status, duration,
              bookingDate, confirmedDate, cancellationReason
     """
+
     booking_id: str
     client_id: str
     trainer_id: str
@@ -160,10 +169,12 @@ class BookingSession(BaseModel):
         """
         if self.trainer_id != trainer_id:
             raise ValueError("Hanya trainer yang bersangkutan yang dapat konfirmasi")
-        
+
         if self.status != BookingStatus.PENDING:
-            raise ValueError(f"Booking dengan status {self.status} tidak dapat dikonfirmasi")
-        
+            raise ValueError(
+                f"Booking dengan status {self.status} tidak dapat dikonfirmasi"
+            )
+
         self.status = BookingStatus.CONFIRMED
         self.confirmed_date = datetime.now()
         return True
@@ -174,10 +185,10 @@ class BookingSession(BaseModel):
         """
         if self.trainer_id != trainer_id:
             raise ValueError("Hanya trainer yang bersangkutan yang dapat menolak")
-        
+
         if self.status != BookingStatus.PENDING:
             raise ValueError(f"Booking dengan status {self.status} tidak dapat ditolak")
-        
+
         self.status = BookingStatus.CANCELLED
         self.cancellation_reason = f"Ditolak oleh trainer: {reason}"
         return True
@@ -189,10 +200,10 @@ class BookingSession(BaseModel):
         """
         if self.status == BookingStatus.COMPLETED:
             raise ValueError("Booking yang sudah selesai tidak dapat dibatalkan")
-        
+
         if self.status == BookingStatus.CANCELLED:
             raise ValueError("Booking sudah dibatalkan sebelumnya")
-        
+
         self.status = BookingStatus.CANCELLED
         self.cancellation_reason = reason
         return True
@@ -203,7 +214,7 @@ class BookingSession(BaseModel):
         """
         if self.status != BookingStatus.CONFIRMED:
             raise ValueError("Hanya booking yang confirmed dapat diselesaikan")
-        
+
         self.status = BookingStatus.COMPLETED
         return True
 
@@ -216,12 +227,12 @@ class BookingSession(BaseModel):
                 "time_slot": {
                     "date": "2025-11-20",
                     "start_time": "09:00:00",
-                    "end_time": "10:00:00"
+                    "end_time": "10:00:00",
                 },
                 "status": "PENDING",
                 "duration": {"minutes": 60},
                 "booking_date": "2025-11-16T10:30:00",
                 "confirmed_date": None,
-                "cancellation_reason": None
+                "cancellation_reason": None,
             }
         }

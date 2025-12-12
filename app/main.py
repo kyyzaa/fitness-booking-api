@@ -3,21 +3,21 @@ Main FastAPI Application
 Entry point untuk Fitness Booking API
 Platform Booking Personal Trainer - Tubes TST
 """
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.infrastructure.repository import (
-    InMemoryBookingRepository,
-    InMemoryClientRepository,
-    InMemoryTrainerRepository,
-    InMemoryUserRepository,
-    MockSchedulingApi
-)
-from app.application.services import BookingService, ClientService, TrainerService
+from app.api.auth_routes import router as auth_router
 from app.api.booking_routes import router as booking_router
 from app.api.client_routes import router as client_router
 from app.api.trainer_routes import router as trainer_router
-from app.api.auth_routes import router as auth_router
+from app.application.services import (BookingService, ClientService,
+                                      TrainerService)
+from app.infrastructure.repository import (InMemoryBookingRepository,
+                                           InMemoryClientRepository,
+                                           InMemoryTrainerRepository,
+                                           InMemoryUserRepository,
+                                           MockSchedulingApi)
 
 # Inisialisasi repositories (In-Memory untuk demo)
 booking_repository = InMemoryBookingRepository()
@@ -31,7 +31,7 @@ booking_service = BookingService(
     booking_repository=booking_repository,
     client_repository=client_repository,
     trainer_repository=trainer_repository,
-    scheduling_api=scheduling_api
+    scheduling_api=scheduling_api,
 )
 client_service = ClientService(client_repository=client_repository)
 trainer_service = TrainerService(trainer_repository=trainer_repository)
@@ -75,7 +75,7 @@ app = FastAPI(
     """,
     version="1.0.0",
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
 )
 
 # CORS middleware (untuk development)
@@ -108,15 +108,15 @@ def read_root():
         "authentication": {
             "register": "/auth/register",
             "login": "/auth/login",
-            "me": "/auth/me"
+            "me": "/auth/me",
         },
         "endpoints": {
             "bookings": "/bookings",
             "clients": "/clients",
-            "trainers": "/trainers"
+            "trainers": "/trainers",
         },
         "domain": "Booking Context (DDD Implementation)",
-        "aggregate_root": "BookingSession"
+        "aggregate_root": "BookingSession",
     }
 
 
@@ -130,4 +130,5 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)
